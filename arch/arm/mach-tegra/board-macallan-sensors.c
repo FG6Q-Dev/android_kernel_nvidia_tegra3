@@ -74,6 +74,7 @@
 //}
 #define CM3218_INT_N TEGRA_GPIO_PX3//187 //pinmux, will init in driver
 
+#ifdef CM3218_POWERON
 static int __capella_cm3218_power(int on, uint8_t val)
 {
     static struct regulator *light_reg;
@@ -103,12 +104,17 @@ static int __capella_cm3218_power(int on, uint8_t val)
 
     return 0;
 }
+#endif
 
 static struct cm3218_platform_data cm3218_pdata = {
         .intr = CM3218_INT_N,
         .levels = { 0x0A, 0xA0, 0xE1, 0x140, 0x280, 0x500,
                     0xA28, 0x16A8, 0x1F40, 0x2800},
+		#ifdef CM3218_POWERON
+		.power = __capella_cm3218_power,
+		#else
         .power = NULL, //__capella_cm3218_power,
+		#endif
             .ALS_slave_address = 0x90 >> 1,
         .check_interrupt_add = CM3218_check_INI,
         .is_cmd = CM3218_ALS_SM_2 | CM3218_ALS_IT_250ms | CM3218_ALS_PERS_1 | CM3218_ALS_RES_1,
@@ -461,6 +467,7 @@ a1040_avdd_fail:
 
 a1040_dvdd_fail:
 	pr_err("%s FAILED\n", __func__);
+	return 0;
 }
 
 static int macallan_a1040_power_off(struct a1040_power_rail *pw)
@@ -499,17 +506,19 @@ struct a1040_platform_data macallan_a1040_pdata = {
 
 static int macallan_lm3560_power_on(struct lm356x_power_rail *pw)
 {
-	int err;
+	int err = 0;
 	pr_info("%s ++\n", __func__);
 
 	gpio_set_value(CAM_FLASH_PWR, 1);
 	if (gpio_get_value(CAM_FLASH_PWR) != 1){
+		err = 1;
 		pr_err("%s gpio_setting failed for gpio %s\n",
 			__func__,"CAM_FLASH_PWR");
 	}
 
 	gpio_set_value(CAM_FLASH_EN, 1);
 	if (gpio_get_value(CAM_FLASH_EN) != 1){
+		err = 1;
 		pr_err("%s gpio_setting failed for gpio %s\n",
 			__func__,"CAM_FLASH_EN");
 	}
