@@ -45,6 +45,7 @@
 #include <mach/edp.h>
 #include <mach/gpio-tegra.h>
 
+#include "hw_version.h"
 #include "cpu-tegra.h"
 #include "pm.h"
 #include "tegra-board-id.h"
@@ -58,13 +59,17 @@
 #include "tegra11_soctherm.h"
 #include "tegra3_tsensor.h"
 #include "battery-ini-model-data.h"
+#include <linux/i2c/bq24160_charger.h>
+#include <linux/i2c/bq27541.h>
 
 #define PMC_CTRL		0x0
 #define PMC_CTRL_INTR_LOW	(1 << 17)
+#define CHARGER_INT    TEGRA_GPIO_PJ0
 
 /* BQ2419X VBUS regulator */
 static struct regulator_consumer_supply bq2419x_vbus_supply[] = {
 	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.0"),
+	REGULATOR_SUPPLY("usb_vbus", "tegra-otg"),
 };
 
 static struct regulator_consumer_supply bq2419x_batt_supply[] = {
@@ -99,7 +104,6 @@ static struct i2c_board_info __initdata macallan_max17048_boardinfo[] = {
 };
 
 struct bq2419x_platform_data macallan_bq2419x_pdata = {
-	.vbus_pdata = &bq2419x_vbus_pdata,
 	.bcharger_pdata = &macallan_bq2419x_charger_pdata,
 };
 
@@ -122,6 +126,32 @@ static struct platform_device psy_extcon_device = {
 	},
 };
 
+static struct regulator_consumer_supply bq24160_batt_supply[] = {
+	REGULATOR_SUPPLY("usb_bat_chg", "tegra-udc.0"),
+};
+
+struct bq24160_charger_platform_data macallan_bq24160_charger_pdata = {
+	.max_charge_current_mA = 1500,
+	.consumer_supplies = bq24160_batt_supply,
+	.num_consumer_supplies = ARRAY_SIZE(bq24160_batt_supply),
+};
+
+
+struct bq24160_platform_data ep5n_bq24160_pdata = {
+	.name = BQ24160_NAME,
+	.support_boot_charging = 1,
+	.update_status = max17048_battery_status,
+	//for USB charging current control
+	.bcharger_pdata = &macallan_bq24160_charger_pdata,
+};
+
+static struct i2c_board_info __initdata bq24160_boardinfo[] = {
+	{
+		I2C_BOARD_INFO(BQ24160_NAME, 0x6b),
+		.platform_data	= &ep5n_bq24160_pdata,
+	},
+};
+
 /************************ Macallan based regulator ****************/
 static struct regulator_consumer_supply palmas_smps123_supply[] = {
 	REGULATOR_SUPPLY("vdd_cpu", NULL),
@@ -137,7 +167,16 @@ static struct regulator_consumer_supply palmas_smps45_supply[] = {
 static struct regulator_consumer_supply palmas_smps6_supply[] = {
 	REGULATOR_SUPPLY("vdd_lcd_hv", NULL),
 	REGULATOR_SUPPLY("avdd_lcd", NULL),
-	REGULATOR_SUPPLY("avdd", "spi0.0"),
+	//REGULATOR_SUPPLY("avdd", "spi0.0"),
+	REGULATOR_SUPPLY("vdd_lcd_hv_r_tsp", NULL),
+};
+
+//for hardware A build version 
+static struct regulator_consumer_supply palmas_smps6_revA_supply[] = {
+	REGULATOR_SUPPLY("vdd_lcd_hv", NULL),
+	REGULATOR_SUPPLY("avdd_lcd", NULL),
+	REGULATOR_SUPPLY("vdd_lcd_hv_r_tsp", NULL),
+	REGULATOR_SUPPLY("vdd_lcd_hv_r_edp", NULL),
 };
 
 static struct regulator_consumer_supply palmas_smps7_supply[] = {
@@ -167,15 +206,27 @@ static struct regulator_consumer_supply palmas_smps8_supply[] = {
 	REGULATOR_SUPPLY("vid", "0-000d"),
 	REGULATOR_SUPPLY("vddio", "0-0078"),
 	REGULATOR_SUPPLY("vdd", "0-004c"),
+	REGULATOR_SUPPLY("vdd_gps_1v8", "reg-userspace-consumer.2"),
+	REGULATOR_SUPPLY("vddio_wifi_1v8", "bcm4329_wlan.1"),
+	REGULATOR_SUPPLY("vddio_bt_1v8", "bluedroid_pm.0"),
 };
 
 static struct regulator_consumer_supply palmas_smps9_supply[] = {
 	REGULATOR_SUPPLY("vddio_sd_slot", "sdhci-tegra.3"),
 	REGULATOR_SUPPLY("vddio_hv", "tegradc.1"),
 	REGULATOR_SUPPLY("pwrdet_hv", NULL),
+	REGULATOR_SUPPLY("vdd_lcd_hv_r_edp", NULL),
+};
+
+//for hardware A build version
+static struct regulator_consumer_supply palmas_smps9_revA_supply[] = {
+	REGULATOR_SUPPLY("vddio_sd_slot", "sdhci-tegra.3"),
+	REGULATOR_SUPPLY("vddio_hv", "tegradc.1"),
+	REGULATOR_SUPPLY("pwrdet_hv", NULL),
 };
 
 static struct regulator_consumer_supply palmas_smps10_supply[] = {
+	REGULATOR_SUPPLY("vdd_hdmi_5v0", "tegradc.1"),
 };
 
 static struct regulator_consumer_supply palmas_ldo1_supply[] = {
@@ -192,11 +243,9 @@ static struct regulator_consumer_supply palmas_ldo1_supply[] = {
 };
 
 static struct regulator_consumer_supply palmas_ldo2_supply[] = {
-	REGULATOR_SUPPLY("avdd_dsi_csi", "tegradc.0"),
-	REGULATOR_SUPPLY("avdd_dsi_csi", "tegradc.1"),
-	REGULATOR_SUPPLY("avdd_dsi_csi", "vi"),
 	REGULATOR_SUPPLY("vddio_hsic", "tegra-ehci.1"),
 	REGULATOR_SUPPLY("vddio_hsic", "tegra-ehci.2"),
+	REGULATOR_SUPPLY("vddio_hsic", "tegra-xhci"),
 	REGULATOR_SUPPLY("pwrdet_mipi", NULL),
 };
 
@@ -213,6 +262,8 @@ static struct regulator_consumer_supply palmas_ldo4_supply[] = {
 static struct regulator_consumer_supply palmas_ldo5_supply[] = {
 	REGULATOR_SUPPLY("avdd_cam2", NULL),
 	REGULATOR_SUPPLY("avdd", "2-0010"),
+	REGULATOR_SUPPLY("pri_cam_2v8", NULL),
+	REGULATOR_SUPPLY("sec_cam_2v8", NULL),
 };
 
 static struct regulator_consumer_supply palmas_ldo5_e1569_supply[] = {
@@ -226,6 +277,7 @@ static struct regulator_consumer_supply palmas_ldo6_supply[] = {
 	REGULATOR_SUPPLY("vdd", "0-0069"),
 	REGULATOR_SUPPLY("vdd", "0-000d"),
 	REGULATOR_SUPPLY("vdd", "0-0078"),
+    REGULATOR_SUPPLY("cm3218", NULL),
 };
 
 static struct regulator_consumer_supply palmas_ldo7_supply[] = {
@@ -258,7 +310,7 @@ static struct regulator_consumer_supply palmas_ldousb_supply[] = {
 	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.0"),
 	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.1"),
 	REGULATOR_SUPPLY("avdd_usb", "tegra-ehci.2"),
-	REGULATOR_SUPPLY("hvdd_usb", "tegra-ehci.2"),
+//	REGULATOR_SUPPLY("hvdd_usb", "tegra-ehci.2"),
 
 };
 
@@ -268,8 +320,8 @@ static struct regulator_consumer_supply palmas_regen1_supply[] = {
 static struct regulator_consumer_supply palmas_regen2_supply[] = {
 };
 
-PALMAS_REGS_PDATA(smps123, 900,  1300, NULL, 0, 0, 0, 0,
-	0, PALMAS_EXT_CONTROL_ENABLE1, 0, 3, 0);
+PALMAS_REGS_PDATA(smps123, 900,  1350, NULL, 0, 0, 0, 0,
+	0, PALMAS_EXT_CONTROL_ENABLE1, 0, 0, 0);
 PALMAS_REGS_PDATA(smps45, 900,  1400, NULL, 0, 0, 0, 0,
 	0, PALMAS_EXT_CONTROL_NSLEEP, 0, 0, 0);
 PALMAS_REGS_PDATA(smps6, 3200,  3200, NULL, 0, 0, 1, NORMAL,
@@ -288,11 +340,11 @@ PALMAS_REGS_PDATA(ldo2, 1200,  1200, palmas_rails(smps7), 0, 1, 1, 0,
 	0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ldo3, 1800,  1800, NULL, 0, 0, 1, 0,
 	0, 0, 0, 0, 0);
-PALMAS_REGS_PDATA(ldo4, 1200,  1200, palmas_rails(smps8), 0, 0, 1, 0,
+PALMAS_REGS_PDATA(ldo4, 1200,  1200, palmas_rails(smps8), 0, 0, 0, 0,
 	0, 0, 0, 0, 0);
-PALMAS_REGS_PDATA(ldo5, 2800,  2800, palmas_rails(smps9), 0, 0, 1, 0,
+PALMAS_REGS_PDATA(ldo5, 2700,  2700, palmas_rails(smps9), 0, 0, 1, 0,
 	0, 0, 0, 0, 0);
-PALMAS_REGS_PDATA(ldo6, 2850,  2850, palmas_rails(smps9), 1, 1, 1, 0,
+PALMAS_REGS_PDATA(ldo6, 2850,  2850, palmas_rails(smps9), 0, 1, 1, 0,
 	0, 0, 0, 0, 0);
 PALMAS_REGS_PDATA(ldo7, 2700,  2700, palmas_rails(smps9), 0, 0, 1, 0,
 	0, 0, 0, 0, 0);
@@ -375,6 +427,16 @@ static struct palmas_pmic_platform_data pmic_platform = {
 	.disable_smps10_boost_suspend = true,
 };
 
+struct palmas_clk32k_init_data palmas_clk32k_idata[] = {
+        {
+                .clk32k_id = PALMAS_CLOCK32KG,
+                .enable = true,
+        }, {
+                .clk32k_id = PALMAS_CLOCK32KG_AUDIO,
+                .enable = true,
+        },
+};
+
 static struct palmas_pinctrl_config palmas_pincfg[] = {
 	PALMAS_PINMUX(POWERGOOD, POWERGOOD, DEFAULT, DEFAULT),
 	PALMAS_PINMUX(VAC, VAC, DEFAULT, DEFAULT),
@@ -399,12 +461,15 @@ static struct palmas_extcon_platform_data palmas_extcon_pdata = {
 	.connection_name = "palmas-extcon",
 	.enable_vbus_detection = true,
 	.enable_id_pin_detection = true,
+	.enable_vac_detection = true,
 };
 
 static struct palmas_platform_data palmas_pdata = {
 	.gpio_base = PALMAS_TEGRA_GPIO_BASE,
 	.irq_base = PALMAS_TEGRA_IRQ_BASE,
 	.pmic_pdata = &pmic_platform,
+	.clk32k_init_data = palmas_clk32k_idata,
+        .clk32k_init_data_size = ARRAY_SIZE(palmas_clk32k_idata),
 	.use_power_off = true,
 	.pinctrl_pdata = &palmas_pinctrl_pdata,
 	.extcon_pdata = &palmas_extcon_pdata,
@@ -448,6 +513,39 @@ static struct regulator_consumer_supply fixed_reg_vd_cam_1v8_supply[] = {
 	REGULATOR_SUPPLY("vdd_i2c", "2-000e"),
 	REGULATOR_SUPPLY("vddio_cam", "vi"),
 	REGULATOR_SUPPLY("pwrdet_cam", NULL),
+	REGULATOR_SUPPLY("pri_cam_1v8", NULL),
+	REGULATOR_SUPPLY("sec_cam_1v8", NULL),
+	REGULATOR_SUPPLY("dmic_en", NULL),
+	REGULATOR_SUPPLY("vdd_light_sensor_1v8", NULL),
+};
+
+static struct regulator_consumer_supply fixed_reg_vdd_usb_5v_supply[] = {
+	REGULATOR_SUPPLY("usb_vbus", "tegra-ehci.0"),
+	REGULATOR_SUPPLY("usb_vbus", "tegra-otg"),
+	REGULATOR_SUPPLY("usb_vbus", "tegra-xhci"),
+//	REGULATOR_SUPPLY("hvdd_usb", "tegra-xhci"),//[FIXME]Check PALMAS_GPIO1
+
+};
+
+static struct regulator_consumer_supply fixed_reg_avdd_1v2_usb3_supply[] = {
+	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-ehci.2"),
+	REGULATOR_SUPPLY("avddio_usb", "tegra-xhci"),
+	REGULATOR_SUPPLY("avdd_usb_pll", "tegra-xhci"),
+};
+
+static struct regulator_consumer_supply fixed_reg_hvdd_3v3_usb3_ap_supply[] = {
+	REGULATOR_SUPPLY("hvdd_usb", "tegra-ehci.2"),
+	REGULATOR_SUPPLY("hvdd_usb", "tegra-xhci"), //[FIXME]Check PALMAS_GPIO1
+};
+
+static struct regulator_consumer_supply fixed_reg_vdd_vbrtr_supply[] = {
+	REGULATOR_SUPPLY("vdd_vbrtr", NULL),
+};
+
+static struct regulator_consumer_supply fixed_reg_va_ap_1v2_en_supply[] = {
+	REGULATOR_SUPPLY("avdd_dsi_csi", "tegradc.0"),
+	REGULATOR_SUPPLY("avdd_dsi_csi", "tegradc.1"),
+	REGULATOR_SUPPLY("avdd_dsi_csi", "vi"),
 };
 
 /* Macro for defining fixed regulator sub device data */
@@ -513,12 +611,35 @@ FIXED_REG(5,	vddio_sd_slot,	vddio_sd_slot,
 	TEGRA_GPIO_PK1,	false,	true,	0,	2900);
 
 FIXED_REG(6,	vd_cam_1v8,	vd_cam_1v8,
-	palmas_rails(smps8),	0,	0,
+	palmas_rails(smps8),	0,	1,
 	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO6,	false,	true,	0,	1800);
+
+FIXED_REG(7,	vdd_usb_5v,	vdd_usb_5v,
+	NULL,	0,	0,
+	TEGRA_GPIO_PN4,	false,	true,	0,	5000);
+
+
+FIXED_REG(8,	vdd_vbrtr,	vdd_vbrtr,
+	NULL,	0,	0,
+	TEGRA_GPIO_PH5,	false,	true,	0,	1800);
+
+FIXED_REG(9,	avdd_1v2_usb3,	avdd_1v2_usb3,
+	palmas_rails(smps8),	0,	0,
+	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO3,	false,	true,	0,	1200);
+
+FIXED_REG(10,	hvdd_3v3_usb3_ap,	hvdd_3v3_usb3_ap,
+	palmas_rails(smps10),	0,	0,
+	PALMAS_TEGRA_GPIO_BASE + PALMAS_GPIO1,	false,	true,	0,	3300);
+
+FIXED_REG(11,	va_ap_1v2_en,	va_ap_1v2_en,
+	palmas_rails(ldo2),	0,	1,
+	TEGRA_GPIO_PP3,	false,	true,	1,	1800);
+
 
 #define ADD_FIXED_REG(_name)	(&fixed_reg_##_name##_dev)
 
 /* Gpio switch regulator platform data for Macallan E1545 */
+/*
 static struct platform_device *fixed_reg_devs[] = {
 	ADD_FIXED_REG(dvdd_lcd_1v8),
 	ADD_FIXED_REG(vdd_lcd_bl_en),
@@ -527,7 +648,20 @@ static struct platform_device *fixed_reg_devs[] = {
 	ADD_FIXED_REG(vddio_sd_slot),
 	ADD_FIXED_REG(vd_cam_1v8),
 };
+*/
 
+//EP5N A2
+static struct platform_device *fixed_reg_devs[] = {
+	ADD_FIXED_REG(vdd_lcd_bl_en),
+	ADD_FIXED_REG(vddio_sd_slot),
+	ADD_FIXED_REG(vd_cam_1v8),
+	ADD_FIXED_REG(vdd_usb_5v),
+	ADD_FIXED_REG(vdd_vbrtr),
+	ADD_FIXED_REG(va_ap_1v2_en),
+	ADD_FIXED_REG(hvdd_3v3_usb3_ap),
+
+	    ADD_FIXED_REG(avdd_1v2_usb3),
+};
 
 int __init macallan_palmas_regulator_init(void)
 {
@@ -553,6 +687,18 @@ int __init macallan_palmas_regulator_init(void)
 			ARRAY_SIZE(palmas_ldo7_e1569_supply);
 	}
 
+	/*
+	//for maintain A build EDP regulator supply
+//	if(qci_mainboard_version() == HW_REV_A){
+		reg_idata_smps6.consumer_supplies = palmas_smps6_revA_supply;
+		reg_idata_smps6.num_consumer_supplies =
+			ARRAY_SIZE(palmas_smps6_revA_supply);
+		reg_idata_smps9.consumer_supplies = palmas_smps9_revA_supply;
+		reg_idata_smps9.num_consumer_supplies =
+			ARRAY_SIZE(palmas_smps9_revA_supply);
+//	}
+	*/
+
 	for (i = 0; i < PALMAS_NUM_REGS ; i++) {
 		pmic_platform.reg_data[i] = macallan_reg_data[i];
 		pmic_platform.reg_init[i] = macallan_reg_init[i];
@@ -560,7 +706,16 @@ int __init macallan_palmas_regulator_init(void)
 
 	i2c_register_board_info(4, palma_device,
 			ARRAY_SIZE(palma_device));
+#ifdef CONFIG_CHARGER_BQ2419X
+	i2c_register_board_info(0, bq2419x_boardinfo,
+			ARRAY_SIZE(bq2419x_boardinfo));
+#endif
 
+#ifdef CONFIG_CHARGER_BQ24160
+	bq24160_boardinfo[0].irq = gpio_to_irq(CHARGER_INT);
+	i2c_register_board_info(0, bq24160_boardinfo,
+			ARRAY_SIZE(bq24160_boardinfo));
+#endif
 	return 0;
 }
 
@@ -665,6 +820,25 @@ static int __init macallan_cl_dvfs_init(void)
 }
 #endif
 
+static struct regulator_bulk_data macallan_gps_regulator_supply[] = {
+	[0] = {
+		.supply	= "vdd_gps_1v8",
+	},
+};
+
+static struct regulator_userspace_consumer_data macallan_gps_regulator_pdata = {
+	.num_supplies	= ARRAY_SIZE(macallan_gps_regulator_supply),
+	.supplies	= macallan_gps_regulator_supply,
+};
+
+static struct platform_device macallan_gps_regulator_device = {
+	.name	= "reg-userspace-consumer",
+	.id	= 2,
+	.dev	= {
+			.platform_data = &macallan_gps_regulator_pdata,
+	},
+};
+
 static int __init macallan_fixed_regulator_init(void)
 {
 	if (!machine_is_macallan())
@@ -692,6 +866,10 @@ int __init macallan_regulator_init(void)
 		}
 		else {
 			/* Only register fuel gauge when using battery. */
+			macallan_max17048_boardinfo[0].irq =
+						gpio_to_irq(TEGRA_GPIO_PQ5);
+			/* set device shutdown threshold to 3.5V */
+			macallan_max17048_pdata.model_data->valert = 0xAFFF;
 			i2c_register_board_info(0, macallan_max17048_boardinfo,
 						1);
 		}
@@ -706,6 +884,7 @@ int __init macallan_regulator_init(void)
 
 	platform_device_register(&psy_extcon_device);
 	platform_device_register(&macallan_pda_power_device);
+	platform_device_register(&macallan_gps_regulator_device);
 
 	return 0;
 }
@@ -722,7 +901,7 @@ int __init macallan_edp_init(void)
 
 	regulator_mA = get_maximum_cpu_current_supported();
 	if (!regulator_mA)
-		regulator_mA = 15000;
+		regulator_mA = 9000;
 
 	pr_info("%s: CPU regulator %d mA\n", __func__, regulator_mA);
 	tegra_init_cpu_edp_limits(regulator_mA);
@@ -795,9 +974,15 @@ static struct soctherm_platform_data macallan_soctherm_data = {
 	},
 	.throttle = {
 		[THROTTLE_HEAVY] = {
+			.priority = 100,
 			.devs = {
 				[THROTTLE_DEV_CPU] = {
-					.enable = 1,
+					.enable = true,
+					.depth = 80,
+				},
+				[THROTTLE_DEV_GPU] = {
+					.enable = true,
+					.depth = 80,
 				},
 			},
 		},
@@ -841,7 +1026,7 @@ int __init macallan_soctherm_init(void)
 
 static struct edp_manager macallan_sysedp_manager = {
 	.name = "battery",
-	.max = 24000
+	.max = 22000
 };
 
 void __init macallan_sysedp_init(void)
@@ -871,19 +1056,19 @@ void __init macallan_sysedp_init(void)
 }
 
 static unsigned int macallan_psydepl_states[] = {
-	9900, 9600, 9300, 9000, 8700, 8400, 8100, 7800,
-	7500, 7200, 6900, 6600, 6300, 6000, 5800, 5600,
-	5400, 5200, 5000, 4800, 4600, 4400, 4200, 4000,
-	3800, 3600, 3400, 3200, 3000, 2800, 2600, 2400,
-	2200, 2000, 1900, 1800, 1700, 1600, 1500, 1400,
-	1300, 1200, 1100, 1000,  900,  800,  700,  600,
-	 500,  400,  300,  200,  100,    0
+	 9000,  8700,  8400,  8100,  7800,
+	 7500,  7200,  6900,  6600,  6300,  6000,  5800,  5600,
+	 5400,  5200,  5000,  4800,  4600,  4400,  4200,  4000,
+	 3800,  3600,  3400,  3200,  3000,  2800,  2600,  2400,
+	 2200,  2000,  1900,  1800,  1700,  1600,  1500,  1400,
+	 1300,  1200,  1100,  1000,   900,   800,   700,   600,
+	  500,   400,   300,   200,   100,     0
 };
 
 static struct psy_depletion_ibat_lut macallan_ibat_lut[] = {
 	{  60,  500 },
-	{  40, 3900 },
-	{   0, 3900 },
+	{  40, 6150 },
+	{   0, 6150 },
 	{ -30,    0 }
 };
 
@@ -891,16 +1076,31 @@ static struct psy_depletion_rbat_lut macallan_rbat_lut[] = {
 	{ 0, 95000 }
 };
 
+static struct psy_depletion_ocv_lut macallan_ocv_lut[] = {
+	{ 100, 4200000 },
+	{  90, 4065000 },
+	{  80, 3978750 },
+	{  70, 3915000 },
+	{  60, 3845000 },
+	{  50, 3803750 },
+	{  40, 3777500 },
+	{  30, 3761250 },
+	{  20, 3728750 },
+	{  10, 3680000 },
+	{   0, 3500000 }
+};
+
 static struct psy_depletion_platform_data macallan_psydepl_pdata = {
 	.power_supply = "battery",
 	.states = macallan_psydepl_states,
 	.num_states = ARRAY_SIZE(macallan_psydepl_states),
-	.e0_index = 16,
+	.e0_index = 0,
 	.r_const = 55000,
-	.vsys_min = 3250000,
+	.vsys_min = 2900000,
 	.vcharge = 4200000,
-	.ibat_nom = 3900,
+	.ibat_nom = 6150,
 	.ibat_lut = macallan_ibat_lut,
+	.ocv_lut = macallan_ocv_lut,
 	.rbat_lut = macallan_rbat_lut
 };
 
@@ -919,12 +1119,12 @@ void __init macallan_sysedp_psydepl_init(void)
 }
 
 static struct tegra_sysedp_corecap macallan_sysedp_corecap[] = {
-	{  1000, {  1000, 240, 204 }, {  1000, 240, 204 } },
-	{  2000, {  1000, 240, 204 }, {  1000, 240, 204 } },
-	{  3000, {  1000, 240, 204 }, {  1000, 240, 204 } },
-	{  4000, {  1000, 240, 204 }, {  1000, 240, 204 } },
-	{  5000, {  1000, 240, 204 }, {  1000, 240, 312 } },
-	{  6000, {  1679, 240, 312 }, {  1679, 240, 312 } },
+	{  1000, {  1000, 240, 102 }, {  1000, 240, 102 } },
+	{  2000, {  1000, 240, 102 }, {  1000, 240, 102 } },
+	{  3000, {  1000, 240, 102 }, {  1000, 240, 102 } },
+	{  4000, {  1000, 240, 102 }, {  1000, 240, 102 } },
+	{  5000, {  1000, 240, 204 }, {  1000, 240, 204 } },
+	{  6000, {  1283, 240, 312 }, {  1283, 240, 312 } },
 	{  7000, {  1843, 240, 624 }, {  1975, 324, 408 } },
 	{  8000, {  2843, 240, 624 }, {  2306, 420, 624 } },
 	{  9000, {  3843, 240, 624 }, {  2606, 420, 792 } },

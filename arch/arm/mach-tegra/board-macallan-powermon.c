@@ -3,19 +3,17 @@
  *
  * Copyright (c) 2013, NVIDIA Corporation. All Rights Reserved.
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
  */
 
 #include <linux/i2c.h>
@@ -243,119 +241,10 @@ static struct ina230_platform_data power_mon_ina230_info[] = {
 	}
 };
 
-enum {
-	INA_I2C_ADDR_40,
-	INA_I2C_ADDR_41,
-	INA_I2C_ADDR_42,
-	INA_I2C_ADDR_43,
-	INA_I2C_ADDR_44,
-	INA_I2C_ADDR_45,
-	INA_I2C_ADDR_46,
-	INA_I2C_ADDR_47,
-	INA_I2C_ADDR_48,
-	INA_I2C_ADDR_49,
-	INA_I2C_ADDR_4A,
-	INA_I2C_ADDR_4B,
-	INA_I2C_ADDR_4C,
-	INA_I2C_ADDR_4D,
-	INA_I2C_ADDR_4E,
-	INA_I2C_ADDR_4F,
-};
-
 static struct i2c_board_info macallan_i2c1_ina_board_info[] = {
-	[INA_I2C_ADDR_40] = {
-		I2C_BOARD_INFO("ina219", 0x40),
-		.platform_data = &power_mon_ina219_info[VD_CPU],
-		.irq = -1,
-	},
-
-	[INA_I2C_ADDR_41] = {
-		I2C_BOARD_INFO("ina219", 0x41),
-		.platform_data = &power_mon_ina219_info[VD_SOC],
-		.irq = -1,
-	},
-
-	[INA_I2C_ADDR_42] = {
-		I2C_BOARD_INFO("ina219", 0x42),
-		.platform_data = &power_mon_ina219_info[VS_DDR0],
-		.irq = -1,
-	},
-
-	[INA_I2C_ADDR_43] = {
-		I2C_BOARD_INFO("ina219", 0x43),
-		.platform_data = &power_mon_ina219_info[VS_DDR1],
-		.irq = -1,
-	},
-
-	[INA_I2C_ADDR_44] = {
+	{
 		I2C_BOARD_INFO("ina230", 0x44),
 		.platform_data = &power_mon_ina230_info[VDD_CELL],
-		.irq = -1,
-	},
-
-	[INA_I2C_ADDR_45] = {
-		I2C_BOARD_INFO("ina219", 0x45),
-		.platform_data = &power_mon_ina219_info[VD_LCD_HV],
-		.irq = -1,
-	},
-
-	[INA_I2C_ADDR_46] = {
-		I2C_BOARD_INFO("ina219", 0x46),
-		.platform_data = &power_mon_ina219_info[VS_SYS_1V8],
-		.irq = -1,
-	},
-
-	[INA_I2C_ADDR_47] = {
-		I2C_BOARD_INFO("ina219", 0x47),
-		.platform_data = &power_mon_ina219_info[VD_AP_1V8],
-		.irq = -1,
-	},
-
-	[INA_I2C_ADDR_48] = {
-		I2C_BOARD_INFO("ina219", 0x48),
-		.platform_data = &power_mon_ina219_info[VD_AP_RTC],
-		.irq = -1,
-	},
-
-	[INA_I2C_ADDR_49] = {
-		I2C_BOARD_INFO("ina219", 0x49),
-		.platform_data = &power_mon_ina219_info[VS_AUD_SYS],
-		.irq = -1,
-	},
-
-	[INA_I2C_ADDR_4A] = {
-		I2C_BOARD_INFO("ina219", 0x4A),
-		.platform_data = &power_mon_ina219_info[VD_DDR0],
-		.irq = -1,
-	},
-
-	[INA_I2C_ADDR_4B] = {
-		I2C_BOARD_INFO("ina219", 0x4B),
-		.platform_data = &power_mon_ina219_info[VD_DDR1],
-		.irq = -1,
-	},
-
-	[INA_I2C_ADDR_4C] = {
-		I2C_BOARD_INFO("ina219", 0x4C),
-		.platform_data = &power_mon_ina219_info[VD_AP_VBUS],
-		.irq = -1,
-	},
-
-	[INA_I2C_ADDR_4D] = {
-		I2C_BOARD_INFO("ina219", 0x4D),
-		.platform_data = &power_mon_ina219_info[VS_SYS_2V9],
-		.irq = -1,
-	},
-
-	[INA_I2C_ADDR_4E] = {
-		I2C_BOARD_INFO("ina219", 0x4E),
-		.platform_data = &power_mon_ina219_info[VA_PLLX],
-		.irq = -1,
-	},
-
-	[INA_I2C_ADDR_4F] = {
-		I2C_BOARD_INFO("ina219", 0x4F),
-		.platform_data = &power_mon_ina219_info[VA_AP_1V2],
 		.irq = -1,
 	},
 };
