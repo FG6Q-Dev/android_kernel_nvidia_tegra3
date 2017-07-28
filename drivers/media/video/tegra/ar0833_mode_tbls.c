@@ -62,18 +62,18 @@ static struct ar0833_reg Default_3P_tbl[] = {
 	{0x3F08, 0x0008},
 	{0x3F0A, 0x0B09},
 	{0x3F0C, 0x0302},
-	{0x3F10, 0x0505},
-	{0x3F12, 0x0303},
-	{0x3F14, 0x0101},
-	{0x3F16, 0x2020},
-	{0x3F18, 0x0404},
-	{0x3F1A, 0x7070},
-	{0x3F1C, 0x003A},
-	{0x3F1E, 0x003C},
+	{0x3F10, 0x0000},
+	{0x3F12, 0x0000},
+	{0x3F14, 0x0000},
+	{0x3F16, 0xFFFF},
+	{0x3F18, 0xFFFF},
+	{0x3F1A, 0xFFFF},
 	{0x3F2C, 0x2210},
-	{0x3F40, 0x2020},
-	{0x3F42, 0x0808},
-	{0x3F44, 0x0101},
+	{0x3F40, 0x0000},
+	{0x3F42, 0x0000},
+	{0x3F44, 0x0000},
+	{0x3F1C, 0x0014},
+	{0x3F1E, 0x001D},
 	{AR0833_TABLE_END, 0x0000},
 };
 
@@ -299,7 +299,7 @@ static struct ar0833_reg mode_3264x2448_30fps[] = {
 	{0x034A, 0x0997},	/*Y_ADDR_END 2455 */
 	{0x034C, 0x0CC0},	/*X_OUTPUT_SIZE 3264 */
 	{0x034E, 0x0990},	/*Y_OUTPUT_SIZE 2448 */
-	{0x3040, 0x4041},	/*X_ODD_INC & Y_ODD_INC */
+	{0x3040, 0x8041},	/*X_ODD_INC & Y_ODD_INC */
 	{0x0202, 0x0A01},	/*COARSE_INTEGRATION_TIME */
 	{0x305E, 0x1000},   /* gain */
 	/*Scaling Enabling: 0= disable, 1= x-dir, 2= xy-dir */
@@ -335,7 +335,7 @@ static struct ar0833_reg mode_3264x2448_HDR_30fps[] = {
 	{0x0202,   2400},   /* T1 Coarse Integration */
 	{0x3088,    300},   /* T2 Coarse Integration */
 	{0x305E, 0x1000},   /* gain */
-	{0x3040, 0x4041},	/*Default read mode */
+	{0x3040, 0x8041},	/*Default read mode */
 
 	/* Disable Streaming */
 	{0x301A, 0x0218},
@@ -388,7 +388,7 @@ static struct ar0833_reg mode_1920x1080_HDR_30fps[] = {
 	{0x034A, 0x0567},	/*Y_ADDR_END 1751 */
 	{0x034C, 0x0780},	/*X_OUTPUT_SIZE 1920 */
 	{0x034E, 0x0438},	/*Y_OUTPUT_SIZE 1080 */
-	{0x3040, 0x4041},	/*X_ODD_INC and Y_ODD_INC */
+	{0x3040, 0x8041},	/*X_ODD_INC and Y_ODD_INC */
 	{0x0202,   1952},	/* T1 Coarse Integration */
 	{0x3088,    244},	/* T2 Coarse Integration */
 	{0x305E, 0x1000},   /* gain */
@@ -442,7 +442,7 @@ static struct ar0833_reg mode_3264x1836_HDR_30fps[] = {
 	{0x034A, 0x085B},	/*Y_ADDR_END */
 	{0x034C, 0x0CC0},	/*X_OUTPUT_SIZE */
 	{0x034E, 0x072C},	/*Y_OUTPUT_SIZE */
-	{0x3040, 0x4041},	/*Default read mode */
+	{0x3040, 0x8041},	/*Default read mode */
 	{0x0202,   1952},	/* T1 Coarse Integration */
 	{0x3088,    244},	/* T2 Coarse Integration */
 	{0x305E, 0x1000},   /* gain */
@@ -492,24 +492,24 @@ static struct ar0833_reg mode_1920x1080_30fps[] = {
 	/*LOAD=MIPI Timings */
 	{AR0833_TABLE_CALL, AR0833_TBL_MIPITM},
 
-	{0x0340, 0x079D},	/*FRAME_LENGTH_LINES */
-	{0x0342, 0x139E},	/*LINE_LENGTH_PCK */
+	{0x0340, 0x07AB},	/*FRAME_LENGTH_LINES */
+	{0x0342, 0x136A},	/*LINE_LENGTH_PCK */
 	{0x0344, 0x0008},	/*X_ADDR_START */
-	{0x0346, 0x0130},	/*Y_ADDR_START */
+	{0x0346, 0x0008},	/*Y_ADDR_START */
 	{0x0348, 0x0CC7},	/*X_ADDR_END */
-	{0x034A, 0x085B},	/*Y_ADDR_END */
-	{0x034C, 0x0780},	/*X_OUTPUT_SIZE */
-	{0x034E, 0x0438},	/*Y_OUTPUT_SIZE */
-	{0x3040, 0x4041},	/*X_ODD_INC & Y_ODD_INC */
-	{0x0202, 0x0700},	/*COARSE_INTEGRATION_TIME */
+	{0x034A, 0x0733},	/*Y_ADDR_END */
+	{0x034C, 0x078C},	/*X_OUTPUT_SIZE */
+	{0x034E, 0x0440},	/*Y_OUTPUT_SIZE */
+	{0x3040, 0x8041},	/*X_ODD_INC & Y_ODD_INC */
+	{0x0202, 0x07AB},	/*COARSE_INTEGRATION_TIME */
 	{0x305E, 0x1000},   /* gain */
 	/*Scaling Enabling: 0= disable, 1= x-dir, 2= xy-dir */
 	{0x0400, 0x0002},
 	{0x0402, 0x0000},	/*Co-Site Scaling */
-	{0x0404, 0x001A},	/*Scale_M = 16 */
-	{0x0408, 0x0B0C},
-	{0x040A, 0x018C},
-	{0x306E, 0x9090},	/*Data Path Select */
+	{0x0404, 0x001B},	/*Scale_M = 27 */
+	{0x0408, 0x0505},
+	{0x040A, 0x014A},
+	{0x306E, 0x9080},	/*Data Path Select */
 	{0x301A, 0x001C},	/* Enable Streaming */
 	{AR0833_TABLE_END, 0x0000},
 };
@@ -550,7 +550,7 @@ static struct ar0833_reg mode_3264x1836_30fps[] = {
 	{0x034A, 0x085B},	/*Y_ADDR_END */
 	{0x034C, 0x0CC0},	/*X_OUTPUT_SIZE */
 	{0x034E, 0x072C},	/*Y_OUTPUT_SIZE */
-	{0x3040, 0x4041},	/*X_ODD_INC & Y_ODD_INC */
+	{0x3040, 0x8041},	/*X_ODD_INC & Y_ODD_INC */
 	{0x0202, 0x0700},	/*COARSE_INTEGRATION_TIME */
 	{0x305E, 0x1000},   /* gain */
 	/*Scaling Enabling: 0= disable, 1= x-dir, 2= xy-dir */
@@ -559,6 +559,88 @@ static struct ar0833_reg mode_3264x1836_30fps[] = {
 	{0x0404, 0x0010},	/*Scale_M = 16 */
 	{0x0408, 0x1010},
 	{0x040A, 0x0210},
+	{0x306E, 0x9080},	/*Data Path Select */
+	{0x301A, 0x001C},	/* Enable Streaming */
+	{AR0833_TABLE_END, 0x0000},
+};
+
+static struct ar0833_reg mode_2592x1944_30fps[] = {
+	{AR0833_TABLE_CALL, AR0833_TBL_RESET},
+	{AR0833_TABLE_CALL, AR0833_TBL_DEF3P},
+	{AR0833_TABLE_WAIT_MS, 1},
+	{AR0833_TABLE_BLOB, AR0833_TBL_SEQ_ADJ_V7P2},
+
+	/*PLL Configuration */
+	{0x0300, 0x0005},	/*VT_PIX_CLK_DIV=5 */
+	{0x0302, 0x0001},	/*VT_SYS_CLK_DIV=1 */
+	{0x0304, 0x0004},	/*PRE_PLL_CLK_DIV=4 Note: 24MHz/4=6MHz */
+	{0x0306, 0x007A},	/*PLL_MULTIPLIER=122 Note: Running at 732MHz */
+	{0x0308, 0x000A},	/*OP_PIX_CLK_DIV=10 */
+	{0x030A, 0x0001},	/*OP_SYS_CLK_DIV=1 */
+	{0x3064, 0x7800},
+	{AR0833_TABLE_WAIT_MS, 1},
+
+	{AR0833_TABLE_CALL, AR0833_TBL_MIPITM},
+
+	/*Frame Timing */
+	{0x0340, 0x0A0F},	/*FRAME_LENGTH_LINES */
+	{0x0342, 0x0ECE},	/*LINE_LENGTH_PCK */
+	{0x0344, 0x0008},	/*X_ADDR_START */
+	{0x0346, 0x0008},	/*Y_ADDR_START */
+	{0x0348, 0x0CC7},	/*X_ADDR_END */
+	{0x034A, 0x0997},	/*Y_ADDR_END */
+	{0x034C, 0x0A30},	/*X_OUTPUT_SIZE */
+	{0x034E, 0x07A6},	/*Y_OUTPUT_SIZE */
+	{0x3040, 0x8041},	/*X_ODD_INC & Y_ODD_INC */
+	{0x0202, 0x0A0F},	/*COARSE_INTEGRATION_TIME */
+	{0x305E, 0x1000},   /* gain */
+	/*Scaling Enabling: 0= disable, 1= x-dir, 2= xy-dir */
+	{0x0400, 0x0002},
+	{0x0402, 0x0000},	/*Co-Site Scaling */
+	{0x0404, 0x0014},	/*Scale_M = 27 */
+	{0x0408, 0x0C0C},/*Slice 2 Residual*/
+	{0x040A, 0x018C},/*Slice 2 Crop */
+	{0x306E, 0x9080},	/*Data Path Select */
+	{0x301A, 0x001C},	/* Enable Streaming */
+	{AR0833_TABLE_END, 0x0000},
+};
+
+static struct ar0833_reg mode_1632x1224_30fps[] = {
+	{AR0833_TABLE_CALL, AR0833_TBL_RESET},
+	{AR0833_TABLE_CALL, AR0833_TBL_DEF3P},
+	{AR0833_TABLE_WAIT_MS, 1},
+	{AR0833_TABLE_BLOB, AR0833_TBL_SEQ_ADJ_V7P2},
+
+	/*PLL Configuration */
+	{0x0300, 0x0005},	/*VT_PIX_CLK_DIV=5 */
+	{0x0302, 0x0001},	/*VT_SYS_CLK_DIV=1 */
+	{0x0304, 0x0004},	/*PRE_PLL_CLK_DIV=4 Note: 24MHz/4=6MHz */
+	{0x0306, 0x007A},	/*PLL_MULTIPLIER=122 Note: Running at 732MHz */
+	{0x0308, 0x000A},	/*OP_PIX_CLK_DIV=10 */
+	{0x030A, 0x0001},	/*OP_SYS_CLK_DIV=1 */
+	{0x3064, 0x7800},
+	{AR0833_TABLE_WAIT_MS, 1},
+
+	{AR0833_TABLE_CALL, AR0833_TBL_MIPITM},
+
+	/*Frame Timing */
+	{0x0340, 0x0A0F},	/*FRAME_LENGTH_LINES */
+	{0x0342, 0x0ECE},	/*LINE_LENGTH_PCK */
+	{0x0344, 0x0008},	/*X_ADDR_START */
+	{0x0346, 0x0008},	/*Y_ADDR_START */
+	{0x0348, 0x0CC7},	/*X_ADDR_END */
+	{0x034A, 0x0997},	/*Y_ADDR_END */
+	{0x034C, 0x0660},	/*X_OUTPUT_SIZE */
+	{0x034E, 0x04C8},	/*Y_OUTPUT_SIZE */
+	{0x3040, 0x8041},	/*X_ODD_INC & Y_ODD_INC */
+	{0x0202, 0x0A0F},	/*COARSE_INTEGRATION_TIME */
+	{0x305E, 0x1000},   /* gain */
+	/*Scaling Enabling: 0= disable, 1= x-dir, 2= xy-dir */
+	{0x0400, 0x0002},
+	{0x0402, 0x0000},	/*Co-Site Scaling */
+	{0x0404, 0x0020},	/*Scale_M = 32 */
+	{0x0408, 0x2020},/*Slice 2 Residual*/
+	{0x040A, 0x0108},/*Slice 2 Crop */
 	{0x306E, 0x9080},	/*Data Path Select */
 	{0x301A, 0x001C},	/* Enable Streaming */
 	{AR0833_TABLE_END, 0x0000},
