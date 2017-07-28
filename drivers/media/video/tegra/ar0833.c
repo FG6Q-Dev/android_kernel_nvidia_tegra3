@@ -31,6 +31,7 @@
 #include <linux/export.h>
 #include <linux/module.h>
 
+#include <media/nvc.h>
 #include <media/ar0833.h>
 
 #define SIZEOF_I2C_TRANSBUF 128
@@ -50,6 +51,7 @@ struct ar0833_info {
 	struct miscdevice		miscdev_info;
 	struct ar0833_power_rail	power;
 	struct ar0833_sensordata	sensor_data;
+	struct nvc_fuseid		fuse_id;
 	struct i2c_client		*i2c_client;
 	struct ar0833_platform_data	*pdata;
 	atomic_t			in_use;
@@ -68,6 +70,7 @@ struct ar0833_info {
 #define AR0833_TABLE_BLOB	0xC003
 #define AR0833_TABLE_END	0xC004
 #define AR0833_TABLE_8BIT	0x8000
+#define AR0833_FUSE_ID_SIZE 8
 
 #include "ar0833_mode_tbls.c"
 
@@ -115,6 +118,18 @@ static struct ar0833_mode_desc mode_table[] = {
 		.yres = 1836,
 		.hdr_en = 1,
 		.mode_tbl = mode_3264x1836_HDR_30fps,
+	},
+	{
+		.xres = 2592,
+		.yres = 1944,
+		.hdr_en = 0,
+		.mode_tbl = mode_2592x1944_30fps,
+	},
+	{
+		.xres = 1632,
+		.yres = 1224,
+		.hdr_en = 0,
+		.mode_tbl = mode_1632x1224_30fps,
 	},
 	{ },
 };
@@ -297,6 +312,7 @@ static int ar0833_write_table(
 	int i;
 	u16 val;
 
+	//pr_err("kokob3: %s ++\n", __func__);
 	dev_dbg(&info->i2c_client->dev, "%s ++\n", __func__);
 	for (next = table; !err; next++) {
 		switch (next->addr) {
@@ -513,7 +529,6 @@ ar0833_set_group_hold(struct ar0833_info *info, struct ar0833_ae *ae)
 static int ar0833_get_status(struct ar0833_info *info, u8 *status)
 {
 	int err;
-
 	err = ar0833_read_reg(info->i2c_client, 0x380e, status);
 	return err;
 }
@@ -522,6 +537,10 @@ static int ar0833_open(struct inode *inode, struct file *file)
 {
 	struct miscdevice	*miscdev = file->private_data;
 	struct ar0833_info	*info;
+    u8 sensorID_H;
+    u8 sensorID_L;
+
+	pr_err("%s ++\n", __func__);
 
 	info = container_of(miscdev, struct ar0833_info, miscdev_info);
 	/* check if the device is in use */
@@ -539,6 +558,13 @@ static int ar0833_open(struct inode *inode, struct file *file)
 			"%s:no valid power_on function.\n", __func__);
 		return -EEXIST;
 	}
+// kokob3: read sensor ID, r0x0000 should be 0x4B03
+	ar0833_msleep(100);
+	ar0833_read_reg(info->i2c_client, 0x0000, &sensorID_H);
+	ar0833_read_reg(info->i2c_client, 0x0001, &sensorID_L);
+	pr_err("ar0833 sensor ID, 0x000 = %x \n", ((sensorID_H << 8) | sensorID_L));
+//
+
 	return 0;
 }
 
@@ -579,10 +605,11 @@ static int ar0833_power_get(struct ar0833_info *info)
 {
 	struct ar0833_power_rail *pw = &info->power;
 
-	ar0833_regulator_get(info, &pw->avdd, "vana"); /* ananlog 2.7v */
-	ar0833_regulator_get(info, &pw->dvdd, "vdig"); /* digital 1.2v */
-	ar0833_regulator_get(info, &pw->iovdd, "vif"); /* interface 1.8v */
-
+//	ar0833_regulator_get(info, &pw->avdd, "vana"); /* ananlog 2.7v */
+//	ar0833_regulator_get(info, &pw->dvdd, "vdig"); /* digital 1.2v */
+//	ar0833_regulator_get(info, &pw->iovdd, "vif"); /* interface 1.8v */
+    ar0833_regulator_get(info, &pw->dvdd, "pri_cam_1v8"); // digital 1.8v
+    ar0833_regulator_get(info, &pw->avdd, "pri_cam_2v8"); // analog 2.8v
 	return 0;
 }
 
@@ -846,6 +873,7 @@ static int ar0833_mode_info_init(struct ar0833_info *info)
 	const struct ar0833_reg *mt;
 	struct ar0833_modeinfo *mi;
 
+	pr_err("%s ++\n", __func__);
 	dev_dbg(&info->i2c_client->dev, "%s", __func__);
 	while (md->xres) {
 		mi = &md->mode_info;
@@ -996,6 +1024,64 @@ static struct ar0833_modeinfo *ar0833_get_mode_info(
 	return &mode_desc->mode_info;
 }
 
+static int ar0833_set_flash_output(struct ar0833_info *info)
+{
+	struct ar0833_flash_control *fctl;
+	pr_err("%s ++\n", __func__);
+	if (!info->pdata)
+		return 0;
+
+	fctl = &info->pdata->flash_cap;
+	dev_info(&info->i2c_client->dev, "%s: %x\n", __func__, fctl->enable);
+	dev_info(&info->i2c_client->dev, "edg: %x, st: %x, rpt: %x, dly: %x\n",
+		fctl->edge_trig_en, fctl->start_edge,
+		fctl->repeat, fctl->delay_frm);
+	return 0;//ar0833_write_table(info->i2c_client, flash_strobe_mod, NULL, 0);
+}
+
+static int ar0833_get_flash_cap(struct ar0833_info *info)
+{
+	struct ar0833_flash_control *fctl;
+
+	dev_dbg(&info->i2c_client->dev, "%s: %p\n", __func__, info->pdata);
+	if (info->pdata) {
+		fctl = &info->pdata->flash_cap;
+		dev_dbg(&info->i2c_client->dev,
+			"edg: %x, st: %x, rpt: %x, dl: %x\n",
+			fctl->edge_trig_en,
+			fctl->start_edge,
+			fctl->repeat,
+			fctl->delay_frm);
+
+		if (fctl->enable)
+			return 0;
+	}
+	return -ENODEV;
+}
+
+static inline int ar0833_set_flash_control(
+	struct ar0833_info *info, struct ar0833_flash_control *fc)
+{
+	u8 flash_state_H, flash_state_L;
+	u16 flash_state_16;
+
+	//dev_info(&info->i2c_client->dev, "%s: %x\n", __func__, fc->enable);
+	// kokob3: set flash control bit R0x3046[8] = 1;
+	ar0833_read_reg(info->i2c_client, 0x3046, &flash_state_H); // ar0833_read_reg only get 8bit, we have 0x3046_H
+	ar0833_read_reg(info->i2c_client, 0x3047, &flash_state_L);
+	flash_state_16 = (flash_state_H << 8) | flash_state_L;
+
+	//pr_err("ar0833 flash state 0x3046 = %x \n", flash_state_16);
+	//flash_state_H &= ~0x02; // set bit R0x3046[9] = 0, only enable flash 1 frame
+	flash_state_H |= 0x01; // set bit R0x3046[8] = true
+	flash_state_16 = (flash_state_H << 8) | flash_state_L;
+
+	//pr_err("ar0833 kokob3 flash state 0x3046 = %x \n", flash_state_16);
+	ar0833_write_reg16(info->i2c_client, 0x3046, flash_state_16);
+
+	return 0;//ar0833_write_reg8(info->i2c_client, 0x0802, 0x01);
+}
+
 static int ar0833_set_mode(struct ar0833_info *info, struct ar0833_mode *mode)
 {
 	struct ar0833_mode_desc *sensor_mode;
@@ -1036,6 +1122,7 @@ static int ar0833_set_mode(struct ar0833_info *info, struct ar0833_mode *mode)
 	if (err)
 		return err;
 
+	ar0833_set_flash_output(info);
 	info->mode = sensor_mode->mode_tbl;
 
 #ifdef CONFIG_DEBUG_FS
@@ -1043,6 +1130,33 @@ static int ar0833_set_mode(struct ar0833_info *info, struct ar0833_mode *mode)
 #endif
 
 	return 0;
+}
+
+static int ar0833_get_fuse_id(struct ar0833_info *info)
+{
+	int ret = 0;
+	int i;
+	u8 bak = 0;
+
+	pr_err("%s, info->fuse_id.size (%d)\n", __func__, info->fuse_id.size);
+	if (info->fuse_id.size)
+		return 0;
+	/*
+	 * TBD 1: If the sensor does not have power at this point
+	 * Need to supply the power, e.g. by calling power on function
+	 */
+
+	//ret |= imx132_write_reg(info->i2c_client, 0x301A, 0x10);
+	for (i = 0; i < AR0833_FUSE_ID_SIZE ; i++) {
+		//ret |= imx132_read_reg(info->i2c_client, 0x31F4 + i, &bak);
+		//info->fuse_id.data[i] = bak;
+		info->fuse_id.data[i] = bak;
+	}
+
+	if (!ret)
+		info->fuse_id.size = i;
+
+	return ret;
 }
 
 static long ar0833_ioctl(struct file *file,
@@ -1096,6 +1210,24 @@ static long ar0833_ioctl(struct file *file,
 			"AR0833_IOCTL_SET_GAIN %x\n", (u32)arg);
 		err = ar0833_set_gain(info, (u16)arg, true);
 		break;
+	case AR0833_IOCTL_GET_FUSEID:
+	{
+		err = ar0833_get_fuse_id(info);
+
+		if (err) {
+			dev_err(&info->i2c_client->dev, "%s:Failed to get fuse id info.\n",
+			__func__);
+			return err;
+		}
+		if (copy_to_user((void __user *)arg,
+				&info->fuse_id,
+				sizeof(struct nvc_fuseid))) {
+			dev_info(&info->i2c_client->dev, "%s:Fail copy fuse id to user space\n",
+				__func__);
+			return -EFAULT;
+		}
+		return 0;
+	}
 	case AR0833_IOCTL_SET_GROUP_HOLD:
 	{
 		struct ar0833_ae ae;
@@ -1165,6 +1297,25 @@ static long ar0833_ioctl(struct file *file,
 		}
 		break;
 	}
+	case AR0833_IOCTL_SET_FLASH_MODE:
+	{
+		struct ar0833_flash_control values;
+
+		dev_dbg(&info->i2c_client->dev,
+			"AR0833_IOCTL_SET_FLASH_MODE\n");
+		if (copy_from_user(&values,
+			(const void __user *)arg,
+			sizeof(struct ar0833_flash_control))) {
+			err = -EFAULT;
+			break;
+		}
+		err = ar0833_set_flash_control(info, &values);
+		break;
+	}
+	case AR0833_IOCTL_GET_FLASH_CAP:
+		err = ar0833_get_flash_cap(info);
+		break;
+
 	default:
 		dev_dbg(&info->i2c_client->dev, "INVALID IOCTL\n");
 		err = -EINVAL;
@@ -1181,6 +1332,7 @@ static int ar0833_probe(struct i2c_client *client,
 {
 	int err;
 	struct ar0833_info *info;
+	pr_err("%s ++\n", __func__);
 	dev_info(&client->dev, "ar0833: probing sensor.\n");
 
 	info = devm_kzalloc(&client->dev, sizeof(*info), GFP_KERNEL);
@@ -1214,7 +1366,16 @@ static int ar0833_probe(struct i2c_client *client,
 	ar0833_debug_init(info);
 	info->enableDCBLC = 0;
 #endif
-
+	// kokob3: ad5816 will get AFC from EEPROM before ar0833_open(), power on for it
+	if (info->pdata && info->pdata->power_on)
+		info->pdata->power_on(&info->power);
+	else {
+		dev_err(&info->i2c_client->dev,
+			"%s:no valid power_on function.\n", __func__);
+		return -EEXIST;
+	}
+	pr_err("%s power on for ad5816 get AFC from EEPROM\n", __func__);
+	pr_err("%s --\n", __func__);
 	return 0;
 }
 
