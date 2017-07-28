@@ -28,6 +28,7 @@
 #include <linux/power/power_supply_extcon.h>
 #include <linux/slab.h>
 #include <linux/extcon.h>
+#include <../board.h>
 
 #define CHARGER_TYPE_DETECTION_DEFAULT_DEBOUNCE_TIME_MS		500
 
@@ -38,6 +39,7 @@ struct power_supply_extcon {
 	struct power_supply			usb;
 	uint8_t					ac_online;
 	uint8_t					usb_online;
+	int					usb_type;
 	struct power_supply_extcon_plat_data	*pdata;
 };
 
@@ -65,6 +67,9 @@ static struct power_supply_cables psy_cables[] = {
 	},
 	{
 		.name	= "Charge-downstream",
+	},
+	{
+		.name	= "AC",
 	},
 };
 
@@ -116,27 +121,32 @@ static int power_supply_extcon_attach_cable(
 		struct power_supply_extcon *psy_extcon,
 		struct extcon_dev *edev)
 {
-	psy_extcon->usb_online = 0;
-	psy_extcon->ac_online = 0;
-
-	if (true == extcon_get_cable_state(edev, "USB")) {
-		psy_extcon->usb_online = 1;
-		dev_info(psy_extcon->dev, "USB charger cable detected\n");
-	} else if (true == extcon_get_cable_state(edev, "Charge-downstream")) {
-		psy_extcon->usb_online = 1;
-		dev_info(psy_extcon->dev,
-			"USB charger downstream cable detected\n");
-	} else if (true == extcon_get_cable_state(edev, "TA")) {
-		psy_extcon->ac_online = 1;
-		dev_info(psy_extcon->dev, "USB TA cable detected\n");
-	} else if (true == extcon_get_cable_state(edev, "Fast-charger")) {
-		psy_extcon->ac_online = 1;
-		dev_info(psy_extcon->dev, "USB Fast-charger cable detected\n");
-	} else if (true == extcon_get_cable_state(edev, "Slow-charger")) {
-		psy_extcon->ac_online = 1;
-		dev_info(psy_extcon->dev, "USB Slow-charger cable detected\n");
-	} else {
-		dev_info(psy_extcon->dev, "Unknown cable detected\n");
+	if(!strcmp(edev->name, "palmas-extcon")) {
+		if(true == extcon_get_cable_state(edev, "AC")){
+			psy_extcon->ac_online = 1;
+			dev_info(psy_extcon->dev, "AC cable detected\n");
+		}
+	}
+	else {
+		if (true == extcon_get_cable_state(edev, "USB")) {
+			psy_extcon->usb_online = 1;
+			dev_info(psy_extcon->dev, "USB charger cable detected\n");
+		} else if (true == extcon_get_cable_state(edev, "Charge-downstream")) {
+			psy_extcon->usb_online = 1;
+			dev_info(psy_extcon->dev,
+				"USB charger downstream cable detected\n");
+		} else if (true == extcon_get_cable_state(edev, "TA")) {
+			psy_extcon->ac_online = 1;
+			dev_info(psy_extcon->dev, "USB TA cable detected\n");
+		} else if (true == extcon_get_cable_state(edev, "Fast-charger")) {
+			psy_extcon->ac_online = 1;
+			dev_info(psy_extcon->dev, "USB Fast-charger cable detected\n");
+		} else if (true == extcon_get_cable_state(edev, "Slow-charger")) {
+			psy_extcon->ac_online = 1;
+			dev_info(psy_extcon->dev, "USB Slow-charger cable detected\n");
+		} else {
+			dev_info(psy_extcon->dev, "Unknown cable detected\n");
+		}
 	}
 
 	power_supply_changed(&psy_extcon->usb);
@@ -229,9 +239,18 @@ static __devinit int psy_extcon_probe(struct platform_device *pdev)
 		cable->psy_extcon = psy_extcon;
 		cable->nb.notifier_call = psy_extcon_extcon_notifier;
 
-		ret = extcon_register_interest(cable->extcon_dev,
-				pdata->extcon_name,
-				cable->name, &cable->nb);
+		if(strcmp(cable->name, "AC"))
+		{
+			ret = extcon_register_interest(cable->extcon_dev,
+					pdata->extcon_name,
+					cable->name, &cable->nb);
+		}
+		else
+		{
+			ret = extcon_register_interest(cable->extcon_dev,
+					"palmas-extcon",
+					cable->name, &cable->nb);
+		}
 		if (ret < 0)
 			dev_err(psy_extcon->dev, "Cannot register for cable: %s\n",
 					cable->name);
@@ -243,6 +262,11 @@ static __devinit int psy_extcon_probe(struct platform_device *pdev)
 
 	power_supply_extcon_attach_cable(psy_extcon, psy_extcon->edev);
 	dev_info(&pdev->dev, "%s() get success\n", __func__);
+
+	struct extcon_dev *ac_edev;
+	ac_edev = extcon_get_extcon_dev("palmas-extcon");
+	power_supply_extcon_attach_cable(psy_extcon, ac_edev);
+
 	return 0;
 
 econ_err:
