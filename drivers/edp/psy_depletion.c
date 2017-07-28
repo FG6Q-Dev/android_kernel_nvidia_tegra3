@@ -14,6 +14,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <linux/debugfs.h>
 #include <linux/edp.h>
 #include <linux/edpdev.h>
 #include <linux/kernel.h>
@@ -31,6 +32,9 @@ struct depl_driver {
 	struct delayed_work work;
 	struct edp_manager *manager;
 	struct power_supply *psy;
+	bool emulator_mode;
+	int capacity;
+	int (*get_ocv)(struct depl_driver *drv, unsigned int capacity);
 };
 
 static int depl_psy_get_property(struct depl_driver *drv,
@@ -38,13 +42,17 @@ static int depl_psy_get_property(struct depl_driver *drv,
 {
 	union power_supply_propval pv;
 
+	if (!drv->psy)
+		return -ENODEV;
 	if (drv->psy->get_property(drv->psy, psp, &pv))
 		return -EFAULT;
-	*val = pv.intval;
+	if (val)
+		*val = pv.intval;
 	return 0;
 }
 
-static int depl_psy_ocv(struct depl_driver *drv)
+static int depl_psy_ocv_from_chip(struct depl_driver *drv,
+		unsigned int capacity)
 {
 	int val;
 	if (depl_psy_get_property(drv, POWER_SUPPLY_PROP_VOLTAGE_OCV, &val))
@@ -55,6 +63,8 @@ static int depl_psy_ocv(struct depl_driver *drv)
 static int depl_psy_capacity(struct depl_driver *drv)
 {
 	int val;
+	if (drv->emulator_mode)
+		return drv->capacity;
 	if (depl_psy_get_property(drv, POWER_SUPPLY_PROP_CAPACITY, &val))
 		return 0;
 	return val;
@@ -81,16 +91,34 @@ static int depl_interpolate(int x, int x1, int y1, int x2, int y2)
 	return (y2 * (x - x1) - y1 * (x - x2)) / (x2 - x1);
 }
 
+static int depl_psy_ocv_from_lut(struct depl_driver *drv,
+		unsigned int capacity)
+{
+	struct psy_depletion_ocv_lut *p;
+	struct psy_depletion_ocv_lut *q;
+
+	p = drv->pdata->ocv_lut;
+
+	while (p->capacity > capacity)
+		p++;
+
+	if (p == drv->pdata->ocv_lut)
+		return p->ocv;
+
+	q = p - 1;
+
+	return depl_interpolate(capacity, p->capacity, p->ocv, q->capacity,
+			q->ocv);
+}
+
 /* Calc RBAT for current capacity (SOC) */
-static int depl_rbat(struct depl_driver *drv)
+static int depl_rbat(struct depl_driver *drv, unsigned int capacity)
 {
 	struct psy_depletion_rbat_lut *p;
 	struct psy_depletion_rbat_lut *q;
-	unsigned int capacity;
 	int rbat;
 
 	rbat = drv->pdata->r_const;
-	capacity = depl_psy_capacity(drv);
 	p = drv->pdata->rbat_lut;
 	if (!p)
 		return rbat;
@@ -105,9 +133,6 @@ static int depl_rbat(struct depl_driver *drv)
 
 	rbat += depl_interpolate(capacity, p->capacity, p->rbat,
 			q->capacity, q->rbat);
-	pr_debug("capacity : %u\n", capacity);
-	pr_debug("rbat     : %d\n", rbat);
-
 	return rbat;
 }
 
@@ -133,9 +158,6 @@ static int depl_ibat(struct depl_driver *drv, unsigned int temp)
 	q = p - 1;
 	ibat = depl_interpolate(temp, p->temp, p->ibat, q->temp, q->ibat);
 
-	pr_debug("temp     : %d\n", temp);
-	pr_debug("ibat     : %d\n", ibat);
-
 	return ibat;
 }
 
@@ -149,6 +171,7 @@ static s64 depl_pbat(s64 ocv, s64 ibat, s64 rbat)
 
 static unsigned int depl_calc(struct depl_driver *drv)
 {
+	unsigned int capacity;
 	s64 ocv;
 	s64 rbat;
 	s64 ibat_pos;
@@ -159,8 +182,12 @@ static unsigned int depl_calc(struct depl_driver *drv)
 	s64 pbat_gain;
 	s64 depl;
 
-	ocv = depl_psy_ocv(drv);
-	rbat = depl_rbat(drv);
+	capacity = depl_psy_capacity(drv);
+	if (capacity >= 100)
+		return 0;
+
+	ocv = drv->get_ocv(drv, capacity);
+	rbat = depl_rbat(drv, capacity);
 
 	ibat_pos = depl_ibat_possible(drv, ocv, rbat);
 	ibat_tbat = depl_ibat(drv, depl_psy_temp(drv));
@@ -172,7 +199,9 @@ static unsigned int depl_calc(struct depl_driver *drv)
 
 	depl = drv->manager->max - div64_s64(pbat_gain * pbat_lcm, 1000);
 
+	pr_debug("capacity : %u\n", capacity);
 	pr_debug("ocv      : %lld\n", ocv);
+	pr_debug("rbat     : %lld\n", rbat);
 	pr_debug("ibat_pos : %lld\n", ibat_pos);
 	pr_debug("ibat_tbat: %lld\n", ibat_tbat);
 	pr_debug("ibat_lcm : %lld\n", ibat_lcm);
@@ -230,6 +259,55 @@ static int depl_resume(struct platform_device *pdev)
 	return 0;
 }
 
+static __devinit int depl_init_ocv_reader(struct depl_driver *drv)
+{
+	if (!depl_psy_get_property(drv, POWER_SUPPLY_PROP_VOLTAGE_OCV, NULL))
+		drv->get_ocv = depl_psy_ocv_from_chip;
+	else if (drv->pdata->ocv_lut)
+		drv->get_ocv = depl_psy_ocv_from_lut;
+	else
+		return -ENODEV;
+
+	return 0;
+}
+
+#ifdef CONFIG_DEBUG_FS
+static int capacity_set(void *data, u64 val)
+{
+	struct depl_driver *drv = data;
+
+	drv->capacity = clamp_t(int, val, 0, 100);
+	flush_delayed_work_sync(&drv->work);
+
+	return 0;
+}
+
+static int capacity_get(void *data, u64 *val)
+{
+	struct depl_driver *drv = data;
+	*val = drv->capacity;
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(capacity_fops, capacity_get, capacity_set, "%lld\n");
+
+static void init_debug(struct depl_driver *drv)
+{
+	struct dentry *d;
+
+	if (!drv->client.dentry) {
+		WARN_ON(1);
+		return;
+	}
+
+	d = debugfs_create_file("capacity", S_IRUGO | S_IWUSR,
+			drv->client.dentry, drv, &capacity_fops);
+	WARN_ON(IS_ERR_OR_NULL(d));
+}
+#else
+static inline void init_debug(struct depl_driver *drv) {}
+#endif
+
 static __devinit int depl_probe(struct platform_device *pdev)
 {
 	struct depl_driver *drv;
@@ -253,7 +331,15 @@ static __devinit int depl_probe(struct platform_device *pdev)
 	drv->pdata = pdev->dev.platform_data;
 	drv->manager = m;
 	drv->psy = power_supply_get_by_name(drv->pdata->power_supply);
-	if (!drv->psy)
+	if (!drv->psy) {
+		if (!drv->pdata->ocv_lut)
+			goto fail;
+		drv->capacity = 100;
+		drv->emulator_mode = true;
+	}
+
+	r = depl_init_ocv_reader(drv);
+	if (r)
 		goto fail;
 
 	c = &drv->client;
@@ -275,6 +361,10 @@ static __devinit int depl_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, drv);
 	INIT_DELAYED_WORK_DEFERRABLE(&drv->work, depl_update);
 	schedule_delayed_work(&drv->work, 0);
+
+	if (drv->emulator_mode)
+		init_debug(drv);
+
 	return 0;
 
 fail:
