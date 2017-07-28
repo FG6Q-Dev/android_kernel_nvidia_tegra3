@@ -144,6 +144,7 @@ struct fts_packet_info{
 	struct fts_touch_info touch[FTS_MAX_TOUCH];
 };
 
+int fts_enable = 0;
 int ft5x06_touch_power(int on);
 void ft5x06_gpio_reset(void);
 static void fts_input_release(struct input_dev *in_dev);
