@@ -40,6 +40,7 @@
 #include "clock.h"
 #include "tegra_usb_phy.h"
 #include "fuse.h"
+#include <linux/i2c/bq24160_charger.h>
 
 #define ERR(stuff...)		pr_err("usb_phy: " stuff)
 #define WARNING(stuff...)	pr_warning("usb_phy: " stuff)
@@ -100,11 +101,26 @@ struct tegra_usb_phy *get_tegra_phy(struct usb_phy *x)
 
 static void usb_host_vbus_enable(struct tegra_usb_phy *phy, bool enable)
 {
+
+	/* OTG driver will take care for OTG port */
+	if (phy->pdata->port_otg)
+		return;
+
 	if (phy->vbus_reg) {
 		if (enable)
+		{
+#ifdef CONFIG_CHARGER_BQ24160
+			bq24160_set_otg_lock(1);
+#endif
 			regulator_enable(phy->vbus_reg);
+		}
 		else
+		{
 			regulator_disable(phy->vbus_reg);
+#ifdef CONFIG_CHARGER_BQ24160
+			bq24160_set_otg_lock(0);
+#endif
+		}
 	} else {
 		int gpio = phy->pdata->u_data.host.vbus_gpio;
 		if (gpio == -1)
