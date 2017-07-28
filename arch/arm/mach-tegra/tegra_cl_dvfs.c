@@ -1794,6 +1794,7 @@ static int undershoot_set(void *data, u64 val)
 DEFINE_SIMPLE_ATTRIBUTE(undershoot_fops, undershoot_get, undershoot_set,
 			"%llu\n");
 
+#if defined(BUG_29518457)
 static int cl_register_show(struct seq_file *s, void *data)
 {
 	u32 offs;
@@ -1828,7 +1829,6 @@ static int cl_register_show(struct seq_file *s, void *data)
 	return 0;
 }
 
-#if defined(BUG_29518457)
 static int cl_register_open(struct inode *inode, struct file *file)
 {
 	return single_open(file, cl_register_show, inode->i_private);
