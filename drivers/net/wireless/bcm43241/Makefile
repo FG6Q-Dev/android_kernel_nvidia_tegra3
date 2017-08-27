@@ -49,21 +49,21 @@ ifeq ($(CONFIG_BCMDHD_EDP_SUPPORT),y)
 DHDCFLAGS += -DWIFIEDP
 endif
 
-DHDOFILES = src/aiutils.o src/bcmsdh_sdmmc_linux.o src/dhd_linux.o src/siutils.o src/bcmutils.o   \
-	src/dhd_linux_sched.o src/dhd_sdio.o src/bcmwifi_channels.o src/bcmevent.o src/hndpmu.o   \
-	src/bcmsdh.o src/dhd_cdc.o src/bcmsdh_linux.o src/dhd_common.o src/linux_osl.o            \
-	src/bcmsdh_sdmmc.o src/dhd_custom_gpio.o src/sbutils.o src/wldev_common.o src/wl_android.o
+DHDOFILES = aiutils.o bcmsdh_sdmmc_linux.o dhd_linux.o siutils.o bcmutils.o   \
+	dhd_linux_sched.o dhd_sdio.o bcmwifi_channels.o bcmevent.o hndpmu.o   \
+	bcmsdh.o dhd_cdc.o bcmsdh_linux.o dhd_common.o linux_osl.o            \
+	bcmsdh_sdmmc.o dhd_custom_gpio.o sbutils.o wldev_common.o wl_android.o
 
 obj-$(CONFIG_BCMDHD) += bcm43241.o
 bcm43241-objs += $(DHDOFILES)
 
 ifeq ($(CONFIG_BCMDHD_WEXT),y)
-bcm43241-objs += src/wl_iw.o
+bcm43241-objs += wl_iw.o
 DHDCFLAGS += -DSOFTAP -DWL_WIRELESS_EXT -DUSE_IW
 endif
 
 ifneq ($(CONFIG_BCMDHD_CFG80211),)
-bcm43241-objs += src/wl_cfg80211.o src/wl_cfgp2p.o src/wl_linux_mon.o src/dhd_cfg80211.o
+bcm43241-objs += wl_cfg80211.o wl_cfgp2p.o wl_linux_mon.o dhd_cfg80211.o
 DHDCFLAGS += -DWL_CFG80211 -DWL_CFG80211_STA_EVENT -DWL_ENABLE_P2P_IF
 endif
 
