@@ -1,4 +1,4 @@
-# bcmdhd
+# bcm43241
 DHDCFLAGS = -Wall -Wstrict-prototypes -Dlinux -DBCMDRIVER                 \
 	-DBCMDONGLEHOST -DUNRELEASEDCHIP -DBCMDMA32 -DBCMFILEIMAGE            \
 	-DDHDTHREAD -DDHD_DEBUG -DSDTEST -DBDC -DTOE                          \
@@ -12,7 +12,7 @@ DHDCFLAGS = -Wall -Wstrict-prototypes -Dlinux -DBCMDRIVER                 \
 	-DWL_CFG80211_VSDB_PRIORITIZE_SCAN_REQUEST                            \
 	-DESCAN_RESULT_PATCH -DHT40_GO -DPASS_ARP_PACKET -DSDIO_CRC_ERROR_FIX \
 	-DDHD_DONOT_FORWARD_BCMEVENT_AS_NETWORK_PKT                           \
-	-Idrivers/net/wireless/bcmdhd -Idrivers/net/wireless/bcmdhd/include
+	-Idrivers/net/wireless/bcm43241 -Idrivers/net/wireless/bcm43241/include
 
 DHDCFLAGS += -DCONFIG_WIFI_CONTROL_FUNC
 
@@ -33,13 +33,13 @@ DHDOFILES = aiutils.o bcmsdh_sdmmc_linux.o dhd_linux.o siutils.o bcmutils.o   \
 	bcmsdh.o dhd_cdc.o bcmsdh_linux.o dhd_common.o linux_osl.o            \
 	bcmsdh_sdmmc.o dhd_custom_gpio.o sbutils.o wldev_common.o wl_android.o
 
-obj-$(CONFIG_BCMDHD) += bcm43241.o
+obj-$(CONFIG_BCM43241) += bcm43241.o
 bcm43241-objs += $(DHDOFILES)
 
 bcm43241-objs += wl_cfg80211.o wl_cfgp2p.o wl_linux_mon.o dhd_cfg80211.o
 DHDCFLAGS += -DWL_CFG80211 -DWL_CFG80211_STA_EVENT -DWL_ENABLE_P2P_IF
 
 EXTRA_CFLAGS = $(DHDCFLAGS)
-ifeq ($(CONFIG_BCMDHD),m)
+ifeq ($(CONFIG_BCM43241),m)
 EXTRA_LDFLAGS += --strip-debug
 endif

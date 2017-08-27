@@ -1,126 +1,118 @@
-config BCMDHD
-	tristate "Broadcom 43xx wireless cards support"
+config BCM43241
+	tristate "Broadcom 43241 wireless card support"
 	depends on MMC
 	---help---
 	  This module adds support for wireless adapters based on
-	  Broadcom 43xx chipset.
+	  Broadcom 43241 chipset.
 
 	  This driver uses the kernel's cfg80211 subsystem.
 
 	  If you choose to build a module, it'll be called dhd. Say M if
 	  unsure.
 
-config BCM43341
-	bool "Broadcom 43341 wireless card support"
-	depends on BCMDHD
-
-config BCM43241
-	bool "Broadcom 43241 wireless card support"
-	depends on BCMDHD
-
-config BCMDHD_FW_PATH
-	depends on BCMDHD
+config BCM43241_FW_PATH
+	depends on BCM43241
 	string "Firmware path"
 	default "/system/vendor/firmware/fw_bcmdhd.bin"
 	---help---
 	  Path to the firmware file.
 
-config BCMDHD_NVRAM_PATH
-	depends on BCMDHD
+config BCM43241_NVRAM_PATH
+	depends on BCM43241
 	string "NVRAM path"
 	default "/system/etc/wifi/bcmdhd.cal"
 	---help---
 	  Path to the calibration file.
 
-config BCMDHD_EDP_SUPPORT
-	bool "BCMDHD EDP Support"
-	depends on BCMDHD && EDP_FRAMEWORK
+config BCM43241_EDP_SUPPORT
+	bool "BCM43241 EDP Support"
+	depends on BCM43241 && EDP_FRAMEWORK
 	help
-	  Use BCMDHD EDP Support to register the driver to
+	  Use BCM43241 EDP Support to register the driver to
 	  battery edp manager.
 
 config DHD_USE_STATIC_BUF
 	bool "Enable memory preallocation"
-	depends on BCMDHD
+	depends on BCM43241
 	default n
 	---help---
 	  Use memory preallocated in platform
 
 config DHD_USE_SCHED_SCAN
 	bool "Use CFG80211 sched scan"
-	depends on BCMDHD && CFG80211
+	depends on BCM43241 && CFG80211
 	default n
 	---help---
 	  Use CFG80211 sched scan
 
-config BCMDHD_CUSTOM_REGULATORY_DOMAIN
+config BCM43241_CUSTOM_REGULATORY_DOMAIN
 	bool "Enable Custom Regulatory Domain"
-	depends on BCMDHD
+	depends on BCM43241
 	default y
 	---help---
 	Use Custom Regulatory Domain set by driver.
 
-config BCMDHD_DISABLE_P2P_SYSFS_DEVICE_NODE
+config BCM43241_DISABLE_P2P_SYSFS_DEVICE_NODE
 	bool "Disable sysfs entry for P2P interfaces"
-	depends on BCMDHD
+	depends on BCM43241
 	default n
 	---help---
 	Disable creation of sysfs device node for P2P interfaces.
 	This is a workaround to prevent management tools from
 	directly managing P2P virtual devices.
 
-config BCMDHD_CLAIM_BCM4325_SDGWB
+config BCM43241_CLAIM_BCM4325_SDGWB
 	bool "Claim BCM4325 SDGWB"
-	depends on BCMDHD
+	depends on BCM43241
 	default y
 	---help---
 	Claim BCM4325 SDGWB
 
-config BCMDHD_CLAIM_BCM4325
+config BCM43241_CLAIM_BCM4325
 	bool "Claim BCM4325"
-	depends on BCMDHD
+	depends on BCM43241
 	default y
 	---help---
 	Claim BCM4325
 
-config BCMDHD_CLAIM_BCM4319
+config BCM43241_CLAIM_BCM4319
 	bool "Claim BCM4319"
-	depends on BCMDHD
+	depends on BCM43241
 	default y
 	---help---
 	Claim BCM4319
 
-config BCMDHD_CLAIM_BCM4330
+config BCM43241_CLAIM_BCM4330
 	bool "Claim BCM4330"
-	depends on BCMDHD
+	depends on BCM43241
 	default y
 	---help---
 	Claim BCM4330
 
-config BCMDHD_CLAIM_BCM4334
+config BCM43241_CLAIM_BCM4334
 	bool "Claim BCM4334"
-	depends on BCMDHD
+	depends on BCM43241
 	default y
 	---help---
 	Claim BCM4334
 
-config BCMDHD_CLAIM_BCM4324
+config BCM43241_CLAIM_BCM4324
 	bool "Claim BCM4324"
-	depends on BCMDHD
+	depends on BCM43241
 	default y
 	---help---
 	Claim BCM4324
 
-config BCMDHD_CLAIM_BCM43239
+config BCM43241_CLAIM_BCM43239
 	bool "Claim BCM43239"
-	depends on BCMDHD
+	depends on BCM43241
 	default y
 	---help---
 	Claim BCM43239
 
-config BCMDHD_CLAIM_SDIO_CLASS_NONE
+config BCM43241_CLAIM_SDIO_CLASS_NONE
 	bool "Claim SDIO chip with no class"
-	depends on BCMDHD
+	depends on BCM43241
 	default y
 	---help---
 	Claim SDIO chip with no class
