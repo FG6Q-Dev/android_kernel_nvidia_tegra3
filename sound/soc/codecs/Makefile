@@ -103,7 +103,7 @@ snd-soc-wm9712-objs := wm9712.o
 snd-soc-wm9713-objs := wm9713.o
 snd-soc-wm-hubs-objs := wm_hubs.o
 snd-soc-rt5639-objs := rt5639.o rt56xx_ioctl.o rt5639_ioctl.o
-snd-soc-rt5640-objs := rt5640.o rt56xx_ioctl.o
+snd-soc-rt5640-objs := rt5640.o
 snd-soc-rt5640-dsp-objs := rt5640-dsp.o
 
 # Amp

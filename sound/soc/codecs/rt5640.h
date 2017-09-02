@@ -152,6 +152,7 @@
 #define RT5640_MAMP_INT_REG2			0x37
 #define RT5640_CHOP_DAC_ADC			0x3d
 #define RT5640_MIXER_INT_REG			0x3f
+#define RT5640_CLSD_INT_REG1			0x1c
 #define RT5640_3D_SPK				0x63
 #define RT5640_WND_1				0x6c
 #define RT5640_WND_2				0x6d
@@ -1724,7 +1725,6 @@
 #define RT5640_DSP_W_EN_BIT			8
 #define RT5640_DSP_CMD_MASK			(0xff)
 #define RT5640_DSP_CMD_SFT			0
-#define RT5640_DSP_CMD_PE			(0x0d)  /* Patch Entry */
 #define RT5640_DSP_CMD_MW			(0x3B)	/* Memory Write */
 #define RT5640_DSP_CMD_MR			(0x37)	/* Memory Read */
 #define RT5640_DSP_CMD_RR			(0x60)	/* Register Read */
@@ -2071,6 +2071,8 @@ enum {
 #define RT5640_NO_JACK		BIT(0)
 #define RT5640_HEADSET_DET	BIT(1)
 #define RT5640_HEADPHO_DET	BIT(2)
+#define RT5640_MICONLY_DET	BIT(3)
+
 
 int rt5640_headset_detect(struct snd_soc_codec *codec, int jack_insert);
 
@@ -2127,9 +2129,6 @@ struct rt5640_pll_code {
 
 struct rt5640_priv {
 	struct snd_soc_codec *codec;
-#if defined(CONFIG_SND_SOC_RT5642_MODULE) || defined(CONFIG_SND_SOC_RT5642)
-	struct delayed_work patch_work;
-#endif
 
 	int aif_pu;
 	int sysclk;
@@ -2144,19 +2143,9 @@ struct rt5640_priv {
 
 	int dmic_en;
 	int dsp_sw;
-#if defined(CONFIG_SND_SOC_RT5642_MODULE) || defined(CONFIG_SND_SOC_RT5642)
-	bool dsp_play_pass;
-	bool dsp_rec_pass;
-#endif
 	struct mutex lock;
 	int shutdown_complete;
 };
 
-#if defined(CONFIG_SND_SOC_RT5642_MODULE) || defined(CONFIG_SND_SOC_RT5642)
-int rt5640_conn_mux_path(struct snd_soc_codec *codec,
-		char *widget_name, char *path_name);
-int rt5640_conn_mixer_path(struct snd_soc_codec *codec,
-		char *widget_name, char *path_name, bool enable);
-#endif
 
 #endif /* __RT5640_H__ */
